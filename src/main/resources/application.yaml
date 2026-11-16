@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: codemod-eval
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    # ponytail: H2 in PostgreSQL mode so the later switch to Postgres is mostly a URL change
+    url: jdbc:h2:file:./data/codemod-eval;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password: ""
+  flyway:
+    locations: classpath:db/migration
+    fail-on-missing-locations: true   # missing/misplaced migration dir fails startup
+    validate-migration-naming: true   # misnamed file (e.g. V1_create.sql) fails instead of being skipped
+  mvc:
+    problemdetails:
+      enabled: true                   # errors (400 validation, 409 conflict) as application/problem+json
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate              # flyway owns the schema; hibernate only checks entities match it
+
+management:
+  endpoints:
+    web:
+      base-path: /                    # health at /health
+
+app:
+  worker:
+    enabled: true
+    poll-delay: 1s
+    concurrency: 4    # max jobs running at once (each will run docker builds)

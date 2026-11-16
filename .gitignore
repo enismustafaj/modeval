@@ -27,3 +27,10 @@ replay_pid*
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
+
+# Local H2 database
+data/
+
+bin/
+
+.settings/

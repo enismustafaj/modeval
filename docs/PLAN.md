@@ -97,11 +97,11 @@ baseline → apply → build → test → score → gate.
 
 ## Architecture (MVP)
 
-A **monolith**: one Java app, one deploy, both planes in one process.
+A **monolith**: one Spring Boot app, one deploy, both planes in one process.
 
 ```
-┌──────────── one Javalin app ────────────┐
-│ HTTP routes ──► jobs table (Postgres)   │  ← control plane
+┌────────── one Spring Boot app ──────────┐
+│ HTTP routes ──► jobs table (db)         │  ← control plane
 │                      ▲   │              │
 │                      │   ▼              │
 │ Worker loop ──► docker run per repo     │  ← data plane
@@ -116,20 +116,23 @@ A **monolith**: one Java app, one deploy, both planes in one process.
 **Rule:** the worker talks to the API *only* through the jobs table. This
 keeps a later split (or a runner rewrite) cheap.
 
-`MODE=all|api|worker` env var lets one jar run as either plane.
+A Spring profile or property (e.g. `app.mode=all|api|worker`) lets one jar
+run as either plane.
 
 ### Stack
 
 | Need | Choice | Note |
 |---|---|---|
-| HTTP + webhooks | Javalin (`useVirtualThreads = true`) | Thin; few routes |
-| Concurrency | Java 21 virtual threads | I/O- and subprocess-bound work |
-| Job queue | Postgres + `FOR UPDATE SKIP LOCKED` | Upgrade at ~10k jobs/min |
+| Framework | Spring Boot 4 (Java 25) | Chosen for speed of development |
+| HTTP + webhooks | Spring MVC on virtual threads | `spring.threads.virtual.enabled` |
+| Persistence | Spring Data JPA / Hibernate | `ddl-auto: validate`; Flyway owns the schema |
+| Migrations | Flyway | `src/main/resources/db/migration` |
+| Database | H2 (PostgreSQL mode) now, Postgres later | Switch is mostly a URL change |
+| Job queue | DB table + `FOR UPDATE SKIP LOCKED` | Native query; upgrade at ~10k jobs/min |
 | Execution | `ProcessBuilder` → `docker run --network=none` | Tools are Node/Rust CLIs anyway |
 | GitHub | hub4j `github-api` | App auth, clone, PRs |
-| DB access | JDBI or plain JDBC | No JPA |
-| DI | Manual constructor wiring in `main()` | Add Avaje Inject if wiring grows past ~50 lines |
-| Reports | Markdown/JSON in Postgres | PR comments are the UI |
+| Health | Spring Boot Actuator | `GET /health` |
+| Codemod storage | Metadata only; fetched from git/registry per run | `sha256` detects upstream changes |
 
 **Skipped for now:** Kubernetes, message broker, separate frontend,
 microservices. Add when one Postgres + one Docker host can't keep up.
