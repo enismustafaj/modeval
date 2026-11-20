@@ -2,9 +2,11 @@ package com.emu.codemodeval.codemod.api;
 
 import com.emu.codemodeval.codemod.api.dto.CodemodResponse;
 import com.emu.codemodeval.codemod.api.dto.SubmitCodemodRequest;
+import com.emu.codemodeval.codemod.model.Codemod;
 import com.emu.codemodeval.codemod.usecase.GetCodemodUseCase;
 import com.emu.codemodeval.codemod.usecase.SubmitCodemodUseCase;
 import jakarta.validation.Valid;
+import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,9 +28,9 @@ public class CodemodController {
     @PostMapping
     public ResponseEntity<CodemodResponse> submit(@Valid @RequestBody SubmitCodemodRequest request,
                                                   UriComponentsBuilder uri) {
-        var saved = submitCodemodUseCase.submit(request.toDomain());
+        Codemod saved = submitCodemodUseCase.submit(request.toDomain());
         // names can contain "/" (e.g. next/15-async-apis), so they go in query params, not the path
-        var location = uri.path("/codemods")
+        URI location = uri.path("/codemods")
             .queryParam("name", saved.name())
             .queryParam("version", saved.version())
             .encode().build().toUri();

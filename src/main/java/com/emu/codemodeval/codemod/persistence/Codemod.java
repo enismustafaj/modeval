@@ -1,5 +1,7 @@
 package com.emu.codemodeval.codemod.persistence;
 
+import com.emu.codemodeval.codemod.model.CodemodSource;
+import com.emu.codemodeval.codemod.model.Ecosystem;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,8 +17,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-
-import com.emu.codemodeval.codemod.model.CodemodSource;
 
 @Entity
 @Table(name = "codemods")
@@ -46,6 +46,16 @@ public class Codemod {
     @Column(nullable = false, unique = true, columnDefinition = "char(64)")
     private String sha256;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Ecosystem targetEcosystem;
+
+    @Column(nullable = false)
+    private String targetPackage;
+
+    @Column(nullable = false)
+    private String targetVersionRange;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -57,10 +67,14 @@ public class Codemod {
             .source(c.source())
             .sourceRef(c.sourceRef())
             .sha256(c.sha256())
+            .targetEcosystem(c.targetEcosystem())
+            .targetPackage(c.targetPackage())
+            .targetVersionRange(c.targetVersionRange())
             .build();
     }
 
     public com.emu.codemodeval.codemod.model.Codemod toDomain() {
-        return new com.emu.codemodeval.codemod.model.Codemod(name, version, source, sourceRef, sha256, createdAt);
+        return new com.emu.codemodeval.codemod.model.Codemod(name, version, source, sourceRef, sha256,
+            targetEcosystem, targetPackage, targetVersionRange, createdAt);
     }
 }

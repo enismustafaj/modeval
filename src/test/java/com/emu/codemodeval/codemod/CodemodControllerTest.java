@@ -1,20 +1,22 @@
 package com.emu.codemodeval.codemod;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import com.emu.codemodeval.codemod.persistence.CodemodRepository;
 import com.emu.codemodeval.job.model.JobStatus;
+import com.emu.codemodeval.job.persistence.Job;
 import com.emu.codemodeval.job.persistence.JobRepository;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -28,7 +30,8 @@ class CodemodControllerTest {
 
     static final String BODY = """
         {"name":"next/15-async-apis","version":"2.0.0","source":"git",
-         "sourceRef":"https://github.com/acme/codemods@abc123","sha256":"%s"}
+         "sourceRef":"https://github.com/acme/codemods@abc123","sha256":"%s",
+         "targetEcosystem":"npm","targetPackage":"next","targetVersionRange":"<15"}
         """.formatted("b".repeat(64));
 
     @Test
@@ -38,11 +41,14 @@ class CodemodControllerTest {
             .andExpect(header().string("Location", "http://localhost/codemods?name=next/15-async-apis&version=2.0.0"))
             .andExpect(jsonPath("$.name").value("next/15-async-apis"))
             .andExpect(jsonPath("$.source").value("git"))
+            .andExpect(jsonPath("$.targetEcosystem").value("npm"))
+            .andExpect(jsonPath("$.targetPackage").value("next"))
+            .andExpect(jsonPath("$.targetVersionRange").value("<15"))
             .andExpect(jsonPath("$.createdAt").exists())
             .andExpect(jsonPath("$.id").doesNotExist());
 
-        var codemodId = codemods.findByNameAndVersion("next/15-async-apis", "2.0.0").orElseThrow().getId();
-        var queued = jobs.findByCodemodId(codemodId);
+        UUID codemodId = codemods.findByNameAndVersion("next/15-async-apis", "2.0.0").orElseThrow().getId();
+        List<Job> queued = jobs.findByCodemodId(codemodId);
         assertEquals(1, queued.size());
         assertEquals(JobStatus.queued, queued.getFirst().getStatus());
 

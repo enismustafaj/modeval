@@ -128,7 +128,7 @@ run as either plane.
 | Persistence | Spring Data JPA / Hibernate | `ddl-auto: validate`; Flyway owns the schema |
 | Migrations | Flyway | `src/main/resources/db/migration` |
 | Database | H2 (PostgreSQL mode) now, Postgres later | Switch is mostly a URL change |
-| Job queue | DB table + `FOR UPDATE SKIP LOCKED` | Native query; upgrade at ~10k jobs/min |
+| Job execution | JobRunr (DB-backed, virtual threads) | Retries w/ backoff, orphaned-job recovery, dashboard on :8000; our `jobs` table stays the status users see |
 | Execution | `ProcessBuilder` → `docker run --network=none` | Tools are Node/Rust CLIs anyway |
 | GitHub | hub4j `github-api` | App auth, clone, PRs |
 | Health | Spring Boot Actuator | `GET /health` |
@@ -136,6 +136,28 @@ run as either plane.
 
 **Skipped for now:** Kubernetes, message broker, separate frontend,
 microservices. Add when one Postgres + one Docker host can't keep up.
+
+### Worker steps
+
+`ValidationJobRunner` (JobRunr) will run each job through these steps. None exist yet; they get added one at a time:
+
+| # | Step | Scope | Does | Status |
+|---|---|---|---|---|
+| 1 | `FetchCodemodStep` | job | Clone `source_ref` at its commit / download from registry; verify `sha256` | todo |
+| 2 | `ResolveCorpusStep` | job | Find repos depending on the target library, pinned to a commit | todo |
+| 3 | `CloneRepoStep` | repo | Shallow clone at the pinned commit | todo |
+| 4 | `BaselineStep` | repo | Install + build/typecheck untouched repo; red → `skipped` | todo |
+| 5 | `ApplyCodemodStep` | repo | Run codemod in `docker run --network=none`; capture diff | todo |
+| 6 | `ChecksStep` | repo | Levels 1-5: parses, idempotent, precision, recall, builds | todo |
+| 7 | `AggregateStep` | job | Roll up outcomes; score = passed / (passed + partial + broke_build) | todo |
+
+Per-repo outcomes: `passed`, `partial`, `broke_build`, `skipped` (baseline red), `errored` (our infra).
+Skipped and errored repos don't affect the score. A failure inside one repo marks only that repo
+`errored`; a job-level failure (steps 1, 2, 7) fails the job and JobRunr retries it. Each job gets a temp
+workspace that is always deleted.
+
+Next: repos currently run sequentially inside one job; split into one JobRunr job per repo
+(`repo_runs` table) when corpora get large.
 
 ### Later: enterprise runner
 

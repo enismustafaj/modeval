@@ -1,8 +1,13 @@
 # overlays src/main/resources/application.yaml when the "test" profile is active
 spring:
   datasource:
-    url: jdbc:h2:mem:test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+  ai:
+    openai:
+      api-key: test-key   # tests never call the model
 
-app:
-  worker:
-    enabled: false   # tests call JobWorker.processNext() directly
+jobrunr:
+  background-job-server:
+    enabled: false   # tests call ValidationJobRunner.run() directly
+  dashboard:
+    enabled: false

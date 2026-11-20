@@ -46,13 +46,12 @@ public class Job {
     private OffsetDateTime finishedAt;
 
     public static Job queued(UUID codemodId) {
-        var job = new Job();
+        Job job = new Job();
         job.codemodId = codemodId;
         job.status = JobStatus.queued;
         return job;
     }
 
-    // ponytail: state transitions instead of setters, so status can only move queued -> running -> succeeded|failed
     public void start() {
         status = JobStatus.running;
         startedAt = OffsetDateTime.now();

@@ -34,3 +34,7 @@ data/
 bin/
 
 .settings/
+
+.vscode/
+
+.claude

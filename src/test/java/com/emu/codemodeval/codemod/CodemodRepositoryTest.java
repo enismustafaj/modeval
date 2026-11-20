@@ -3,6 +3,7 @@ package com.emu.codemodeval.codemod;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.emu.codemodeval.codemod.model.CodemodSource;
+import com.emu.codemodeval.codemod.model.Ecosystem;
 import com.emu.codemodeval.codemod.persistence.Codemod;
 import com.emu.codemodeval.codemod.persistence.CodemodRepository;
 import org.junit.jupiter.api.Test;
@@ -18,15 +19,16 @@ class CodemodRepositoryTest {
 
     @Test
     void insertAndFind() {
-        var saved = repo.saveAndFlush(Codemod.builder()
+        Codemod saved = repo.saveAndFlush(Codemod.builder()
             .name("acme/repository-test").version("1.0.0").source(CodemodSource.git)
             .sourceRef("https://github.com/acme/codemods@abc123").sha256("a".repeat(64))
+            .targetEcosystem(Ecosystem.npm).targetPackage("next").targetVersionRange("<15")
             .build());
 
         assertNotNull(saved.getId());
         assertNotNull(saved.getCreatedAt());
 
-        var found = repo.findByNameAndVersion("acme/repository-test", "1.0.0").orElseThrow();
+        Codemod found = repo.findByNameAndVersion("acme/repository-test", "1.0.0").orElseThrow();
         assertEquals(saved.getId(), found.getId());
         assertEquals(CodemodSource.git, found.getSource());
         assertEquals("https://github.com/acme/codemods@abc123", found.getSourceRef());

@@ -6,7 +6,7 @@ spring:
       enabled: true
   datasource:
     # ponytail: H2 in PostgreSQL mode so the later switch to Postgres is mostly a URL change
-    url: jdbc:h2:file:./data/codemod-eval;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    url: jdbc:h2:file:./data/codemod-eval;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_ON_EXIT=FALSE  # JobRunr shuts down after H2's own hook
     username: sa
     password: ""
   flyway:
@@ -20,14 +20,35 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate              # flyway owns the schema; hibernate only checks entities match it
+  ai:
+    model:
+      chat: openai                    # only the chat model; no embedding/image/audio/moderation beans
+      embedding: none
+      image: none
+      audio:
+        speech: none
+        transcription: none
+      moderation: none
+    openai:
+      base-url: https://openrouter.ai/api/v1   # OpenRouter speaks the OpenAI api
+      api-key: ${OPENROUTER_API_KEY}
+      chat:
+        options:
+          model: ${OPENROUTER_MODEL:anthropic/claude-sonnet-5.5}
 
 management:
   endpoints:
     web:
       base-path: /                    # health at /health
 
-app:
-  worker:
+jobrunr:
+  background-job-server:
     enabled: true
-    poll-delay: 1s
-    concurrency: 4    # max jobs running at once (each will run docker builds)
+    worker-count: 4               # max validation jobs running at once (each will run docker builds)
+    thread-type: VirtualThreads
+    poll-interval-in-seconds: 5
+  dashboard:
+    enabled: true                 # http://localhost:8000 (no auth yet; set username/password before exposing it)
+    port: 8000
+  jobs:
+    default-number-of-retries: 3  # exponential backoff between attempts

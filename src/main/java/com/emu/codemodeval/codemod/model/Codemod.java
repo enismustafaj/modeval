@@ -11,5 +11,8 @@ public record Codemod(
     CodemodSource source,
     String sourceRef,
     String sha256,
+    Ecosystem targetEcosystem,
+    String targetPackage,
+    String targetVersionRange,
     OffsetDateTime createdAt   // null until stored
 ) {}
