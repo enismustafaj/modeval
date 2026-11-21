@@ -1,9 +1,11 @@
 package com.emu.codemodeval.codemod.usecase;
 
+import com.emu.codemodeval.activity.ActivityStream;
 import com.emu.codemodeval.codemod.exception.CodemodAlreadyExistsException;
 import com.emu.codemodeval.codemod.model.Codemod;
 import com.emu.codemodeval.codemod.persistence.CodemodRepository;
 import com.emu.codemodeval.job.usecase.EnqueueJobUseCase;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +16,7 @@ public class SubmitCodemodUseCase {
 
     private final CodemodRepository repository;
     private final EnqueueJobUseCase enqueueJobUseCase;
+    private final ActivityStream activity;
 
     /** Stores a new codemod version and queues its validation job. Versions are immutable: resubmitting one is a conflict. */
     @Transactional
@@ -25,7 +28,8 @@ public class SubmitCodemodUseCase {
         // constraint rejects the second with a 500. Map DataIntegrityViolationException to 409 if that matters.
         com.emu.codemodeval.codemod.persistence.Codemod saved = repository.saveAndFlush(
             com.emu.codemodeval.codemod.persistence.Codemod.fromDomain(codemod));
-        enqueueJobUseCase.enqueue(saved.getId());
+        UUID jobId = enqueueJobUseCase.enqueue(saved.getId()).id();
+        activity.publish(jobId, "queued " + codemod.name() + "@" + codemod.version());
         return saved.toDomain();
     }
 }

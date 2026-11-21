@@ -34,7 +34,7 @@ spring:
       api-key: ${OPENROUTER_API_KEY}
       chat:
         options:
-          model: ${OPENROUTER_MODEL:anthropic/claude-sonnet-5.5}
+          model: ${OPENROUTER_MODEL:anthropic/claude-haiku-5.5}   # tool use + JSON output; $0.10/$0.50 per M tokens
 
 management:
   endpoints:

@@ -21,7 +21,6 @@ class CodemodRepositoryTest {
     void insertAndFind() {
         Codemod saved = repo.saveAndFlush(Codemod.builder()
             .name("acme/repository-test").version("1.0.0").source(CodemodSource.git)
-            .sourceRef("https://github.com/acme/codemods@abc123").sha256("a".repeat(64))
             .targetEcosystem(Ecosystem.npm).targetPackage("next").targetVersionRange("<15")
             .build());
 
@@ -31,7 +30,7 @@ class CodemodRepositoryTest {
         Codemod found = repo.findByNameAndVersion("acme/repository-test", "1.0.0").orElseThrow();
         assertEquals(saved.getId(), found.getId());
         assertEquals(CodemodSource.git, found.getSource());
-        assertEquals("https://github.com/acme/codemods@abc123", found.getSourceRef());
+        assertEquals("next", found.getTargetPackage());
         assertEquals(1, repo.findByNameOrderByCreatedAtDesc("acme/repository-test").size());
     }
 }

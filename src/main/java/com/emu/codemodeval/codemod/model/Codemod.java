@@ -9,8 +9,6 @@ public record Codemod(
     String name,
     String version,
     CodemodSource source,
-    String sourceRef,
-    String sha256,
     Ecosystem targetEcosystem,
     String targetPackage,
     String targetVersionRange,

@@ -1,0 +1,190 @@
+# Sandbox policy for running a codemod against a dependent repo (passed with `openshell sandbox create --policy`).
+# Static on purpose: the sandbox can only download dependencies and toolchains. Everything else, including the
+# LLM, our own services and the cloud metadata address, is denied (OpenShell denies anything no rule allows).
+#
+# Every endpoint is read-only (GET/HEAD/OPTIONS) and enforced, so nothing can be uploaded or pushed. Side effects:
+# `npm install` must pass --no-audit (the audit is a POST), and git over https (clone/fetch POST to
+# git-upload-pack) is blocked; the repo is uploaded into the sandbox instead.
+#
+# Binaries are not restricted (/**): the agent installs runtimes wherever the version manager puts them
+# (e.g. ~/.nvm/versions/node/v18.19.0/bin/node), so the host list is the control.
+# Schema: https://docs.nvidia.com/openshell/latest/how-it-works/policies/schema
+version: 1
+
+# OpenShell adds the baseline paths (/usr, /lib, /etc read-only; /tmp read-write) because we have network rules.
+filesystem_policy:
+  include_workdir: true   # /sandbox, the agent's home: the repo, runtimes it installs, package caches
+  read_only:
+    - /opt                # the codemod CLI and its own Node (see sandbox.Dockerfile)
+
+network_policies:
+  # npm, yarn and pnpm packages (pnpm/yarn come via corepack from the npm registry)
+  npm:
+    endpoints:
+      - host: registry.npmjs.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+        allow_encoded_slash: true  # scoped packages: /@types%2fnode
+      - host: registry.yarnpkg.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+        allow_encoded_slash: true  # scoped packages: /@types%2fnode
+      - host: repo.yarnpkg.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+        allow_encoded_slash: true  # scoped packages: /@types%2fnode
+    binaries:
+      - path: /**
+
+  # node itself, for whichever version the repo pins (nvm, fnm, corepack)
+  node_runtimes:
+    endpoints:
+      - host: nodejs.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+    binaries:
+      - path: /**
+
+  # release tarballs and install scripts (nvm, rustup...); read-only, so no git push
+  github_downloads:
+    endpoints:
+      - host: github.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: codeload.github.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: raw.githubusercontent.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: objects.githubusercontent.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: release-assets.githubusercontent.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+    binaries:
+      - path: /**
+
+  # python packages
+  pypi:
+    endpoints:
+      - host: pypi.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: files.pythonhosted.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+    binaries:
+      - path: /**
+
+  # maven and gradle dependencies, plugins and gradle wrapper distributions
+  maven:
+    endpoints:
+      - host: repo.maven.apache.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: repo1.maven.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: plugins.gradle.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: services.gradle.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: downloads.gradle.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+    binaries:
+      - path: /**
+
+  # go modules and toolchains
+  go:
+    endpoints:
+      - host: proxy.golang.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: sum.golang.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: dl.google.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+    binaries:
+      - path: /**
+
+  # rust crates and toolchains
+  cargo:
+    endpoints:
+      - host: index.crates.io
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: static.crates.io
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: static.rust-lang.org
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+    binaries:
+      - path: /**
+
+  # the codemod under test (codemod run <name>@<version>)
+  codemod_registry:
+    endpoints:
+      - host: app.codemod.com
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: registry-cdn.codemod.com   # package tarballs (codemod run downloads from here)
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+    binaries:
+      - path: /**

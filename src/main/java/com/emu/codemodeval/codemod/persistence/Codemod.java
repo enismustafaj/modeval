@@ -40,12 +40,6 @@ public class Codemod {
     @Column(nullable = false)
     private CodemodSource source;
 
-    @Column(nullable = false)
-    private String sourceRef;
-
-    @Column(nullable = false, unique = true, columnDefinition = "char(64)")
-    private String sha256;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Ecosystem targetEcosystem;
@@ -65,8 +59,6 @@ public class Codemod {
             .name(c.name())
             .version(c.version())
             .source(c.source())
-            .sourceRef(c.sourceRef())
-            .sha256(c.sha256())
             .targetEcosystem(c.targetEcosystem())
             .targetPackage(c.targetPackage())
             .targetVersionRange(c.targetVersionRange())
@@ -74,7 +66,7 @@ public class Codemod {
     }
 
     public com.emu.codemodeval.codemod.model.Codemod toDomain() {
-        return new com.emu.codemodeval.codemod.model.Codemod(name, version, source, sourceRef, sha256,
+        return new com.emu.codemodeval.codemod.model.Codemod(name, version, source,
             targetEcosystem, targetPackage, targetVersionRange, createdAt);
     }
 }

@@ -1,13 +1,14 @@
 package com.emu.codemodeval.engine.worker;
 
-import com.emu.codemodeval.engine.steps.dependentrepos.DependentReposStep;
+import com.emu.codemodeval.activity.ActivityStream;
+import com.emu.codemodeval.activity.model.ActivityKind;
+import com.emu.codemodeval.engine.pipeline.PipelineContext;
+import com.emu.codemodeval.engine.pipeline.ValidationPipeline;
 import com.emu.codemodeval.job.model.JobQueuedEvent;
 import com.emu.codemodeval.job.model.JobStatus;
 import com.emu.codemodeval.job.persistence.JobRepository;
-import com.emu.codemodeval.repos.model.Repo;
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
@@ -33,14 +34,16 @@ public class ValidationJobRunner {
 
     private final JobScheduler scheduler;
     private final JobRepository jobs;
-    private final DependentReposStep dependentRepos;
+    private final ValidationPipeline pipeline;
+    private final ActivityStream activity;
     private final TransactionTemplate tx;
 
-    public ValidationJobRunner(JobScheduler scheduler, JobRepository jobs, DependentReposStep dependentRepos,
-                               PlatformTransactionManager txManager) {
+    public ValidationJobRunner(JobScheduler scheduler, JobRepository jobs, ValidationPipeline pipeline,
+                               ActivityStream activity, PlatformTransactionManager txManager) {
         this.scheduler = scheduler;
         this.jobs = jobs;
-        this.dependentRepos = dependentRepos;
+        this.pipeline = pipeline;
+        this.activity = activity;
         this.tx = new TransactionTemplate(txManager);
     }
 
@@ -84,13 +87,15 @@ public class ValidationJobRunner {
             return;
 
         try {
-            List<Repo> repos = dependentRepos.run(job.codemodId());
-            // ponytail: this is the only step so far; the next steps go here, in order
-            log.info("[{}] cloned {} dependent repos: {}", jobId, repos.size(), repos.stream().map(Repo::path).toList());
+            activity.publish(jobId, "job started");
+            PipelineContext done = pipeline.run(new PipelineContext(jobId, job.codemodId()));
+            log.info("[{}] report: {}", jobId, done.getReport());
             update(jobId, com.emu.codemodeval.job.persistence.Job::succeed);
+            activity.publish(jobId, ActivityKind.ok, "job succeeded: " + done.getReport().verdicts());
         } catch (RuntimeException e) {
             log.warn("Job {} failed; JobRunr will retry if attempts remain", jobId, e);
             update(jobId, row -> row.fail(e.toString()));
+            activity.publish(jobId, ActivityKind.error, "job failed: " + e.getMessage());
             throw e;
         }
     }

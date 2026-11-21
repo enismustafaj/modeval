@@ -9,15 +9,13 @@ public record CodemodResponse(
     String name,
     String version,
     CodemodSource source,
-    String sourceRef,
-    String sha256,
     Ecosystem targetEcosystem,
     String targetPackage,
     String targetVersionRange,
     OffsetDateTime createdAt
 ) {
     public static CodemodResponse from(Codemod c) {
-        return new CodemodResponse(c.name(), c.version(), c.source(), c.sourceRef(), c.sha256(),
+        return new CodemodResponse(c.name(), c.version(), c.source(),
             c.targetEcosystem(), c.targetPackage(), c.targetVersionRange(), c.createdAt());
     }
 }

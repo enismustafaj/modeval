@@ -1,8 +1,8 @@
 package com.emu.codemodeval.ecosystems;
 
 import com.emu.codemodeval.codemod.model.Ecosystem;
-import com.emu.codemodeval.engine.steps.dependentrepos.DependentRepo;
 import com.emu.codemodeval.engine.steps.dependentrepos.DependentsIndex;
+import com.emu.codemodeval.engine.steps.dependentrepos.model.DependentRepo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;

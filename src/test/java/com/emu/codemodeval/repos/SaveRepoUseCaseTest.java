@@ -49,8 +49,6 @@ class SaveRepoUseCaseTest {
         String suffix = UUID.randomUUID().toString();
         return codemods.saveAndFlush(Codemod.builder()
             .name("acme/repos-test-" + suffix).version("1.0.0").source(CodemodSource.git)
-            .sourceRef("https://github.com/acme/codemods@abc123")
-            .sha256(suffix.replace("-", "").repeat(2))
             .targetEcosystem(Ecosystem.npm).targetPackage("next").targetVersionRange("<15")
             .build()).getId();
     }

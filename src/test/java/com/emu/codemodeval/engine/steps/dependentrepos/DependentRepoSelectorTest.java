@@ -2,6 +2,7 @@ package com.emu.codemodeval.engine.steps.dependentrepos;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.emu.codemodeval.engine.steps.dependentrepos.model.DependentRepo;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

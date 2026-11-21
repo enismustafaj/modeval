@@ -1,5 +1,6 @@
 package com.emu.codemodeval.engine.steps.dependentrepos;
 
+import com.emu.codemodeval.engine.steps.dependentrepos.model.DependentRepo;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;

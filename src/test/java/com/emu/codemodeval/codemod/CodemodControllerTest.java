@@ -30,9 +30,8 @@ class CodemodControllerTest {
 
     static final String BODY = """
         {"name":"next/15-async-apis","version":"2.0.0","source":"git",
-         "sourceRef":"https://github.com/acme/codemods@abc123","sha256":"%s",
          "targetEcosystem":"npm","targetPackage":"next","targetVersionRange":"<15"}
-        """.formatted("b".repeat(64));
+        """;
 
     @Test
     void submitThenGetThenConflict() throws Exception {
@@ -54,7 +53,8 @@ class CodemodControllerTest {
 
         mvc.perform(get("/codemods").param("name", "next/15-async-apis").param("version", "2.0.0"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.sha256").value("b".repeat(64)));
+            .andExpect(jsonPath("$.targetPackage").value("next"))
+            .andExpect(jsonPath("$.sha256").doesNotExist());
 
         mvc.perform(post("/codemods").contentType(MediaType.APPLICATION_JSON).content(BODY))
             .andExpect(status().isConflict());
@@ -64,7 +64,7 @@ class CodemodControllerTest {
     void rejectsInvalidRequest() throws Exception {
         mvc.perform(post("/codemods").contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"name":"","version":"1.0.0","source":"git","sourceRef":"x","sha256":"not-a-hash"}
+                    {"name":"","version":"1.0.0","source":"git"}
                     """))
             .andExpect(status().isBadRequest());
     }

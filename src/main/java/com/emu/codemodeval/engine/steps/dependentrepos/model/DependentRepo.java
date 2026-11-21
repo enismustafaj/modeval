@@ -1,4 +1,4 @@
-package com.emu.codemodeval.engine.steps.dependentrepos;
+package com.emu.codemodeval.engine.steps.dependentrepos.model;
 
 /** A GitHub repo that depends on the codemod's target package. */
 public record DependentRepo(
