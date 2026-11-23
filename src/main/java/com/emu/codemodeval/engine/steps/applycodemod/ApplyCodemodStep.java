@@ -3,10 +3,12 @@ package com.emu.codemodeval.engine.steps.applycodemod;
 import com.emu.codemodeval.activity.ActivityStream;
 import com.emu.codemodeval.activity.model.ActivityKind;
 import com.emu.codemodeval.agent.CodemodAgent;
-import com.emu.codemodeval.agent.tools.SandboxTools;
+import com.emu.codemodeval.agent.tools.ExecTool;
+import com.emu.codemodeval.agent.tools.RunCodemodTool;
+import com.emu.codemodeval.agent.tools.SandboxSession;
 import com.emu.codemodeval.codemod.model.Codemod;
-import com.emu.codemodeval.codemod.model.CodemodSource;
 import com.emu.codemodeval.codemod.usecase.GetCodemodUseCase;
+import com.emu.codemodeval.codemod.model.CodemodSource;
 import com.emu.codemodeval.engine.pipeline.PipelineContext;
 import com.emu.codemodeval.engine.pipeline.Step;
 import com.emu.codemodeval.engine.steps.applycodemod.exception.SandboxException;
@@ -40,8 +42,8 @@ public class ApplyCodemodStep implements Step {
     public void run(PipelineContext ctx) {
         Codemod codemod = getCodemod.get(ctx.getCodemodId())
             .orElseThrow(() -> new IllegalStateException("codemod " + ctx.getCodemodId() + " not found"));
-        if (codemod.source() != CodemodSource.registry)
-            throw new UnsupportedOperationException("only registry codemods can be run so far, not " + codemod.source());
+        if (codemod.source() == CodemodSource.git)
+            throw new UnsupportedOperationException("git codemods can't be run yet");
         List<RunReport> reports = new ArrayList<>();
         for (Repo repo : ctx.getRepos())
             reports.add(runIn(ctx.getJobId(), codemod, repo));
@@ -60,9 +62,9 @@ public class ApplyCodemodStep implements Step {
     private void upload(String name, Repo repo) {
         sandbox.upload(name, repo.path(), "/sandbox");
         String uploaded = "/sandbox/" + repo.path().getFileName();
-        ExecResult moved = sandbox.exec(name, List.of("mv", uploaded, SandboxTools.REPO_DIR), Duration.ofMinutes(1));
+        ExecResult moved = sandbox.exec(name, List.of("mv", uploaded, SandboxSession.REPO_DIR), Duration.ofMinutes(1));
         if (moved.exitCode() != 0)
-            throw new SandboxException("could not move " + uploaded + " to " + SandboxTools.REPO_DIR + ": " + moved.output());
+            throw new SandboxException("could not move " + uploaded + " to " + SandboxSession.REPO_DIR + ": " + moved.output());
     }
 
     private RunReport runIn(UUID jobId, Codemod codemod, Repo repo) {
@@ -72,16 +74,17 @@ public class ApplyCodemodStep implements Step {
         sandbox.create(name, jobId);
         upload(name, repo);
         activity.publish(jobId, repo.fullName() + ": agent is setting up the repo");
-        SandboxTools tools = new SandboxTools(sandbox, name, codemod, (command, exit) -> {
+        SandboxSession session = new SandboxSession(sandbox, name, (command, exit) -> {
             if (exit == null)
                 activity.publish(jobId, ActivityKind.command, repo.fullName() + ": $ " + command);
             else if (exit != 0)
                 activity.publish(jobId, ActivityKind.error, repo.fullName() + ": exit " + exit + " from " + command);
         });
         // the repo name comes from us, not the model
-        RunReport report = agent.run(codemod, repo, tools);
+        RunCodemodTool runCodemod = new RunCodemodTool(session, codemod);
+        RunReport report = agent.run(codemod, repo, new ExecTool(session), runCodemod);
         RunReport verified = verifier.verify(new RunReport(repo.fullName(), report.verdict(), report.setup(),
-            report.checkCommand(), report.summary()), tools);
+            report.checkCommand(), report.summary()), session.calls(), runCodemod.codemodRan());
         activity.publish(jobId, kindOf(verified.verdict()), repo.fullName() + ": " + verified.verdict() + " - " + verified.summary());
         return verified;
     }

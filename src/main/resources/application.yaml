@@ -9,6 +9,11 @@ spring:
     url: jdbc:h2:file:./data/codemod-eval;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_ON_EXIT=FALSE  # JobRunr shuts down after H2's own hook
     username: sa
     password: ""
+    hikari:
+      # H2 binds IN(...) check constraints to the session that created them (Flyway's connection). Retiring that
+      # connection (Hikari's default 30 min max-lifetime) makes every write to those tables fail with
+      # "Check constraint invalid ... database has been closed". Keep connections for good; drop this with Postgres.
+      max-lifetime: 0
   flyway:
     locations: classpath:db/migration
     fail-on-missing-locations: true   # missing/misplaced migration dir fails startup

@@ -69,7 +69,7 @@ class ReportControllerTest {
     private UUID newCodemod(String name) {
         return codemods.saveAndFlush(Codemod.builder()
             .name(name).version("1.0.0").source(CodemodSource.registry)
-            .targetEcosystem(Ecosystem.npm).targetPackage("react").targetVersionRange("<19")
+            .ecosystem(Ecosystem.npm).packageName("react").fromRange("<19")
             .build()).getId();
     }
 }

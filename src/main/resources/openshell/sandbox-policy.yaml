@@ -16,6 +16,8 @@ filesystem_policy:
   include_workdir: true   # /sandbox, the agent's home: the repo, runtimes it installs, package caches
   read_only:
     - /opt                # the codemod CLI and its own Node (see sandbox.Dockerfile)
+    - /proc               # Node's process.memoryUsage() reads /proc/self/statm; Next.js and Sentry call it in builds
+    - /sys                # Node reads its cgroup memory/CPU limits here
 
 network_policies:
   # npm, yarn and pnpm packages (pnpm/yarn come via corepack from the npm registry)
@@ -182,6 +184,27 @@ network_policies:
         enforcement: enforce
         access: read-only
       - host: registry-cdn.codemod.com   # package tarballs (codemod run downloads from here)
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+    binaries:
+      - path: /**
+
+  # build-time downloads some repos can't build without
+  build_assets:
+    endpoints:
+      - host: binaries.prisma.sh       # Prisma query/schema engines, fetched by `prisma generate`
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: fonts.googleapis.com     # next/font/google downloads fonts at build time
+        port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+      - host: fonts.gstatic.com
         port: 443
         protocol: rest
         enforcement: enforce

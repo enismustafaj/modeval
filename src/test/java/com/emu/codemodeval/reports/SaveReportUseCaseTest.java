@@ -55,7 +55,7 @@ class SaveReportUseCaseTest {
         String suffix = UUID.randomUUID().toString();
         return codemods.saveAndFlush(Codemod.builder()
             .name("acme/report-test-" + suffix).version("1.0.0").source(CodemodSource.registry)
-            .targetEcosystem(Ecosystem.npm).targetPackage("next").targetVersionRange("<15")
+            .ecosystem(Ecosystem.npm).packageName("next").fromRange("<15")
             .build()).getId();
     }
 }

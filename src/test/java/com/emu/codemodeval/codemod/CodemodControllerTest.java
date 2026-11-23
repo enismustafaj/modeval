@@ -30,7 +30,7 @@ class CodemodControllerTest {
 
     static final String BODY = """
         {"name":"next/15-async-apis","version":"2.0.0","source":"git",
-         "targetEcosystem":"npm","targetPackage":"next","targetVersionRange":"<15"}
+         "migration":{"ecosystem":"npm","packageName":"next","from":"<15","to":" "}}
         """;
 
     @Test
@@ -40,9 +40,10 @@ class CodemodControllerTest {
             .andExpect(header().string("Location", "http://localhost/codemods?name=next/15-async-apis&version=2.0.0"))
             .andExpect(jsonPath("$.name").value("next/15-async-apis"))
             .andExpect(jsonPath("$.source").value("git"))
-            .andExpect(jsonPath("$.targetEcosystem").value("npm"))
-            .andExpect(jsonPath("$.targetPackage").value("next"))
-            .andExpect(jsonPath("$.targetVersionRange").value("<15"))
+            .andExpect(jsonPath("$.migration.ecosystem").value("npm"))
+            .andExpect(jsonPath("$.migration.packageName").value("next"))
+            .andExpect(jsonPath("$.migration.from").value("<15"))
+            .andExpect(jsonPath("$.migration.to").isEmpty())
             .andExpect(jsonPath("$.createdAt").exists())
             .andExpect(jsonPath("$.id").doesNotExist());
 
@@ -53,7 +54,7 @@ class CodemodControllerTest {
 
         mvc.perform(get("/codemods").param("name", "next/15-async-apis").param("version", "2.0.0"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.targetPackage").value("next"))
+            .andExpect(jsonPath("$.migration.packageName").value("next"))
             .andExpect(jsonPath("$.sha256").doesNotExist());
 
         mvc.perform(post("/codemods").contentType(MediaType.APPLICATION_JSON).content(BODY))

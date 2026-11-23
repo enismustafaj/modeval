@@ -1,7 +1,10 @@
 package com.emu.codemodeval.agent;
 
-import com.emu.codemodeval.agent.tools.SandboxTools;
+import com.emu.codemodeval.agent.tools.ExecTool;
+import com.emu.codemodeval.agent.tools.RunCodemodTool;
+import com.emu.codemodeval.agent.tools.SandboxSession;
 import com.emu.codemodeval.codemod.model.Codemod;
+import com.emu.codemodeval.codemod.model.Migration;
 import com.emu.codemodeval.engine.steps.applycodemod.model.RunReport;
 import com.emu.codemodeval.reports.model.Verdict;
 import com.emu.codemodeval.repos.model.Repo;
@@ -31,7 +34,10 @@ public class CodemodAgent {
           `export PATH=$HOME/node/bin:$PATH && npm ci --no-audit`.
         - Check the CPU with `uname -m` (aarch64 means linux-arm64, x86_64 means linux-x64). Install
           Node from the official tarball, e.g.
-          `curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-arm64.tar.xz | tar -xJ -C $HOME && mv $HOME/node-v18.19.0-linux-arm64 $HOME/node`.
+          `curl -fsSL https://nodejs.org/dist/v18.19.0/node-v18.19.0-linux-arm64.tar.xz | tar -xJ -C $HOME && ln -sfn $HOME/node-v18.19.0-linux-arm64 $HOME/node`.
+          To switch versions, extract the other version next to it and repoint the $HOME/node link.
+          Never delete, move or overwrite a runtime you already ran: the sandbox remembers each
+          binary by path, and a changed binary at the same path loses all network access.
           Do not use the nvm installer: it needs git clone, which is blocked.
         - You have at most %2$d tool calls. Combine related steps into one command with &&.
 
@@ -39,7 +45,10 @@ public class CodemodAgent {
         2. Find the repo's own checks (build, type check, tests) and run them. This is the baseline.
            If you cannot get the baseline passing, stop: verdict setup_failed.
         3. Call runCodemod once. If it errors: verdict codemod_failed.
-        4. Run exactly the same checks again. Passing: verdict passed. Failing: verdict broke_repo.
+        4. If the task names a version to upgrade to, check whether the codemod already upgraded the
+           package in package.json. If not, upgrade it with the repo's own package manager and
+           reinstall. That is part of the migration, not an edit to the code.
+        5. Run exactly the same checks again. Passing: verdict passed. Failing: verdict broke_repo.
 
         The network is locked down: only package registries (npm, PyPI, Maven, Go, crates), runtime
         downloads (nodejs.org, GitHub releases) and the codemod registry are reachable, and only for
@@ -49,13 +58,13 @@ public class CodemodAgent {
         Keep commands non-interactive and give long ones a generous timeout. Do not edit the repo's
         code yourself; only the codemod may change it. In the summary, quote the error lines that
         decided the verdict.
-        """.formatted(SandboxTools.REPO_DIR, SandboxTools.MAX_CALLS);
+        """.formatted(SandboxSession.REPO_DIR, SandboxSession.MAX_CALLS);
 
     private final ChatClient chat;
 
-    public RunReport run(Codemod codemod, Repo repo, SandboxTools tools) {
+    public RunReport run(Codemod codemod, Repo repo, ExecTool exec, RunCodemodTool runCodemod) {
         try {
-            return ask(codemod, repo, tools);
+            return ask(codemod, repo, exec, runCodemod);
         } catch (JacksonException e) {
             // the model ended without the JSON report (often after running out of tool calls)
             return new RunReport(repo.fullName(), Verdict.inconclusive, null, null,
@@ -63,12 +72,20 @@ public class CodemodAgent {
         }
     }
 
-    private RunReport ask(Codemod codemod, Repo repo, SandboxTools tools) {
+    private String task(Codemod codemod, Repo repo) {
+        Migration migration = codemod.migration();
+        String upgrade = migration.to() == null ? ""
+            : "\nUpgrade to: " + migration.packageName() + "@" + migration.to();
+        return "Repo: " + repo.fullName()
+            + "\nCodemod: " + codemod.name() + "@" + codemod.version() + (codemod.args() == null ? "" : " " + codemod.args())
+            + " (migrates " + migration.packageName() + " " + migration.from() + ")" + upgrade;
+    }
+
+    private RunReport ask(Codemod codemod, Repo repo, ExecTool exec, RunCodemodTool runCodemod) {
         return chat.prompt()
             .system(SYSTEM)
-            .user("Repo: " + repo.fullName() + "\nCodemod: " + codemod.name() + "@" + codemod.version()
-                + " (migrates " + codemod.targetPackage() + " " + codemod.targetVersionRange() + ")")
-            .tools(tools)
+            .user(task(codemod, repo))
+            .tools(exec, runCodemod)
             .call()
             .entity(RunReport.class);
     }

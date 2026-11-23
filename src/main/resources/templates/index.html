@@ -6,7 +6,6 @@
   <title>codemod-eval</title>
   <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.11/dist/htmx.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/htmx-ext-sse@2.2.4/dist/sse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/htmx-ext-json-enc@2.0.3/dist/json-enc.min.js"></script>
   <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
@@ -22,7 +21,7 @@
   <div class="layout">
     <section class="card">
       <h2>New validation</h2>
-      <form hx-post="/codemods" hx-ext="json-enc" hx-swap="none"
+      <form hx-post="/codemods" hx-ext="json-nested" hx-swap="none"
             hx-on::after-request="const out = this.querySelector('output'); const ok = event.detail.successful;
               out.className = ok ? 'ok' : 'error';
               out.textContent = ok ? 'Queued. Follow it in the activity log.' : 'Error ' + event.detail.xhr.status + ': ' + event.detail.xhr.responseText">
@@ -35,16 +34,20 @@
               <select name="source"><option th:each="s : ${sources}" th:value="${s}" th:text="${s}"></option></select>
             </label>
           </div>
+          <label>Arguments <input name="args" placeholder="which migration in the package, e.g. v7"></label>
         </fieldset>
         <fieldset>
-          <legend>Target package</legend>
+          <legend>Migrates</legend>
           <div class="row">
             <label>Ecosystem
-              <select name="targetEcosystem"><option th:each="e : ${ecosystems}" th:value="${e}" th:text="${e}"></option></select>
+              <select name="migration.ecosystem"><option th:each="e : ${ecosystems}" th:value="${e}" th:text="${e}"></option></select>
             </label>
-            <label>Versions <input name="targetVersionRange" required placeholder="&lt;19"></label>
+            <label>From <input name="migration.from" required placeholder="&lt;19"></label>
           </div>
-          <label>Package <input name="targetPackage" required placeholder="react"></label>
+          <div class="row">
+            <label>Package <input name="migration.packageName" required placeholder="react"></label>
+            <label>To <input name="migration.to" placeholder="19"></label>
+          </div>
         </fieldset>
         <button>Validate</button>
         <output></output>
@@ -58,6 +61,24 @@
   </div>
 </main>
 <script>
+  // json-enc, but dotted names nest: migration.from -> {"migration": {"from": ...}}
+  htmx.defineExtension("json-nested", {
+    onEvent(name, evt) {
+      if (name === "htmx:configRequest") evt.detail.headers["Content-Type"] = "application/json";
+    },
+    encodeParameters(xhr, parameters) {
+      xhr.overrideMimeType("text/json");
+      const body = {};
+      for (const [key, value] of parameters) {
+        const path = key.split(".");
+        let target = body;
+        for (const part of path.slice(0, -1)) target = target[part] ??= {};
+        target[path.at(-1)] = value;
+      }
+      return JSON.stringify(body);
+    }
+  });
+
   // connection indicator: the sse extension fires these on the element that holds sse-connect
   const live = document.getElementById("live");
   const log = document.getElementById("log");

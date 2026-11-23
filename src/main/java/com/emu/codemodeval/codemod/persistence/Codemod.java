@@ -2,6 +2,7 @@ package com.emu.codemodeval.codemod.persistence;
 
 import com.emu.codemodeval.codemod.model.CodemodSource;
 import com.emu.codemodeval.codemod.model.Ecosystem;
+import com.emu.codemodeval.codemod.model.Migration;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -40,15 +41,19 @@ public class Codemod {
     @Column(nullable = false)
     private CodemodSource source;
 
+    private String args;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Ecosystem targetEcosystem;
+    private Ecosystem ecosystem;
 
     @Column(nullable = false)
-    private String targetPackage;
+    private String packageName;
 
     @Column(nullable = false)
-    private String targetVersionRange;
+    private String fromRange;   // "from" and "to" are SQL keywords
+
+    private String toVersion;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -59,14 +64,16 @@ public class Codemod {
             .name(c.name())
             .version(c.version())
             .source(c.source())
-            .targetEcosystem(c.targetEcosystem())
-            .targetPackage(c.targetPackage())
-            .targetVersionRange(c.targetVersionRange())
+            .args(c.args())
+            .ecosystem(c.migration().ecosystem())
+            .packageName(c.migration().packageName())
+            .fromRange(c.migration().from())
+            .toVersion(c.migration().to())
             .build();
     }
 
     public com.emu.codemodeval.codemod.model.Codemod toDomain() {
-        return new com.emu.codemodeval.codemod.model.Codemod(name, version, source,
-            targetEcosystem, targetPackage, targetVersionRange, createdAt);
+        return new com.emu.codemodeval.codemod.model.Codemod(name, version, source, args,
+            new Migration(ecosystem, packageName, fromRange, toVersion), createdAt);
     }
 }
