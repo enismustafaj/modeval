@@ -19,21 +19,33 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /** Finds the public repos a codemod gets validated against and clones them. */
 @Component
-@RequiredArgsConstructor
 public class DependentReposStep implements Step {
-
-    private static final int LIMIT = 5;
 
     private final GetCodemodUseCase getCodemod;
     private final DependentsIndex index;
     private final VersionRangeMatcher versions;
     private final CloneRepoUseCase cloneRepo;
     private final ActivityStream activity;
+    private final int repoReach;
+
+    /** {@code repoReach}: how many dependent repos a codemod is validated against. */
+    public DependentReposStep(GetCodemodUseCase getCodemod, DependentsIndex index, VersionRangeMatcher versions,
+                              CloneRepoUseCase cloneRepo, ActivityStream activity,
+                              @Value("${codemod-eval.repo-reach}") int repoReach) {
+        if (repoReach < 1)
+            throw new IllegalArgumentException("codemod-eval.repo-reach must be at least 1, was " + repoReach);
+        this.getCodemod = getCodemod;
+        this.index = index;
+        this.versions = versions;
+        this.cloneRepo = cloneRepo;
+        this.activity = activity;
+        this.repoReach = repoReach;
+    }
 
     @Override
     public void run(PipelineContext ctx) {
@@ -52,7 +64,7 @@ public class DependentReposStep implements Step {
         // clones stay on disk for the later steps; CleanupReposStep deletes them when the job ends
         List<Repo> cloned = new ArrayList<>();
         for (DependentRepo repo : selected) {
-            if (cloned.size() == LIMIT)
+            if (cloned.size() == repoReach)
                 break;
             try {
                 cloned.add(cloneRepo.cloneInto(codemodId, repo.fullName(), repo.url(), dir));

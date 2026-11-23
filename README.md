@@ -22,7 +22,7 @@ flowchart LR
 1. **Submit.** You give the codemod (name, version, where it comes from) and what it migrates: a package,
    the version range it migrates from and the version it migrates to. This queues a job.
 2. **Find dependent repos.** [ecosyste.ms](https://repos.ecosyste.ms) lists public repos that depend on
-   the package. It keeps 5 that use the package directly, are not archived or forks, and are on a version
+   the package. It keeps the first few (the repo reach, 5 by default) that use the package directly, are not archived or forks, and are on a version
    in the "from" range. Repos that can't be cloned (deleted or private) are skipped.
 3. **Run in sandboxes.** Each repo gets its own [OpenShell](https://github.com/NVIDIA/OpenShell) sandbox.
    An AI agent works in it:
@@ -72,6 +72,7 @@ docker build -t codemod-eval-sandbox:1 -f src/main/resources/openshell/sandbox.D
 
 export OPENROUTER_API_KEY=sk-or-...
 export OPENROUTER_MODEL=anthropic/claude-haiku-5.5   # optional, this is the default
+export REPO_REACH=5                                  # optional: repos per codemod, this is the default
 ./gradlew bootRun
 ```
 

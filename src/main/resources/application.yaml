@@ -41,6 +41,9 @@ spring:
         options:
           model: ${OPENROUTER_MODEL:anthropic/claude-haiku-5.5}   # tool use + JSON output; $0.10/$0.50 per M tokens
 
+codemod-eval:
+  repo-reach: ${REPO_REACH:5}     # how many dependent repos each codemod is validated against
+
 management:
   endpoints:
     web:

@@ -31,7 +31,7 @@ class DependentReposStepTest {
     DependentsIndex index = mock(DependentsIndex.class);
     CloneRepoUseCase cloneRepo = mock(CloneRepoUseCase.class);
     DependentReposStep step = new DependentReposStep(getCodemod, index, new VersionRangeMatcher(), cloneRepo,
-        mock(ActivityStream.class));
+        mock(ActivityStream.class), 3);
     UUID codemodId = UUID.randomUUID();
     PipelineContext ctx = new PipelineContext(UUID.randomUUID(), codemodId);
 
@@ -63,7 +63,7 @@ class DependentReposStepTest {
     }
 
     @Test
-    void skipsReposThatCannotBeClonedAndStopsAtFive() {
+    void skipsReposThatCannotBeClonedAndStopsAtTheRepoReach() {
         when(index.dependents(Ecosystem.npm, "next")).thenReturn(IntStream.rangeClosed(1, 8)
             .mapToObj(i -> repo("a/r" + i, "^14.0.0", true, false, false)).toList());
         when(cloneRepo.cloneInto(eq(codemodId), eq("a/r2"), anyString(), any()))
@@ -71,7 +71,7 @@ class DependentReposStepTest {
 
         step.run(ctx);
 
-        assertEquals(List.of("a/r1", "a/r3", "a/r4", "a/r5", "a/r6"), names());
+        assertEquals(List.of("a/r1", "a/r3", "a/r4"), names());
     }
 
     private List<String> names() {
